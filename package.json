@@ -1,0 +1,23 @@
+{
+  "name": "linklens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal development foundation for LinkLens.",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && node esbuild.config.mjs production",
+    "test": "npm run build && node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "obsidian": "1.14.4",
+    "typescript": "5.8.3"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "linklens",
+  "name": "LinkLens",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "Minimal development foundation for LinkLens.",
+  "author": "massi910",
+  "isDesktopOnly": false
+}
