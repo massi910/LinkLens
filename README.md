@@ -1,5 +1,5 @@
 # LinkLens
-An Obsidian plugin project. The current implementation provides only the minimal plugin entry point and development tooling; no scanning command or results UI is available.
+An Obsidian plugin project with a minimal plugin entry point and a tested metadata reader. The reader preserves individual link and embed occurrences, their original targets and source positions, and distinguishes unavailable metadata from an empty note. No scanning command or results UI is available.
 
 ## Development
 
@@ -12,7 +12,7 @@ npm test
 npm run build
 ```
 
-`npm run dev` watches TypeScript sources and rebuilds `main.js`. `npm test` builds the plugin and runs manifest and bundle checks using Node's test runner.
+`npm run dev` watches TypeScript sources and rebuilds `main.js`. `npm test` builds the plugin and runs manifest, bundle, and metadata reader checks using Node's test runner. Metadata tests use synthetic API mocks; they do not verify real Obsidian parsing or destination resolution.
 
 The build uses the official Obsidian API types, TypeScript strict checking, and esbuild. Development dependencies are locked in `package-lock.json`; there are no runtime dependencies bundled with the plugin.
 
