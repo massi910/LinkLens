@@ -2,7 +2,7 @@
   "name": "linklens",
   "version": "0.1.0",
   "private": true,
-  "description": "Minimal development foundation for LinkLens.",
+  "description": "Scan Markdown notes for broken internal file links.",
   "type": "module",
   "main": "main.js",
   "scripts": {
