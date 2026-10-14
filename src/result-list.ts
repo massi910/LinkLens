@@ -1,10 +1,12 @@
-import type { LinkOccurrence } from "./link-occurrence";
+import { ButtonComponent } from "obsidian";
+import type { ScannedOccurrence } from "./link-occurrence";
 
 export function renderOccurrences(
   container: HTMLElement,
-  occurrences: readonly LinkOccurrence[],
+  occurrences: readonly ScannedOccurrence[],
   start: number,
   end: number,
+  openSource: (occurrence: ScannedOccurrence) => Promise<void>,
 ): void {
   const list = container.createEl("ol", {
     cls: "linklens-results",
@@ -24,5 +26,8 @@ export function renderOccurrences(
       // Note names and link syntax are untrusted text, never HTML.
       details.createEl("dd", { text: value });
     }
+    const open = new ButtonComponent(row).setButtonText("Open source");
+    open.buttonEl.setAttribute("aria-label", `Open ${occurrence.sourcePath}, line ${occurrence.position.start.line + 1}, column ${occurrence.position.start.col + 1}`);
+    open.onClick(() => openSource(occurrence));
   }
 }

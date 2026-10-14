@@ -9,7 +9,9 @@ The scan coordinator collects Markdown sources through Obsidian's vault API, wai
 
 Requires Obsidian 1.7.2 or newer. Run **LinkLens: Scan vault for broken links** from the command palette. The command opens or reuses the LinkLens tab and starts a scan once the vault layout is ready. Use **Scan vault** to rerun it. Existing results are replaced by the scanning state until the new scan finishes.
 
-Results are ordered by source path and position, with up to 100 occurrences per page. Use **Previous page** and **Next page** for larger lists. Line and column numbers start at 1. Results are informational; they do not currently open the source note.
+Results are ordered by source path and position, with up to 100 occurrences per page. Use **Previous page** and **Next page** for larger lists. Line and column numbers start at 1. **Open source** opens the note in the normal editor and selects the original link so you can edit it manually.
+
+Navigation checks the source revision, original text, and editor coordinates before selecting a result. Changed, renamed, or deleted sources require a fresh scan; the plugin does not guess a new location for an old result. An unchanged source editor is reused when available.
 
 The plugin never modifies notes or creates destinations. Edit notes in the normal editor and wait for Obsidian to index changes before rescanning. An unavailable cache or a changed Markdown source produces an error rather than a partial result. Closing the scan tab cancels its work.
 

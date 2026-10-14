@@ -28,8 +28,10 @@ class Element {
 class ItemView {
   constructor(leaf) { this.app = leaf.app; this.contentEl = new Element(); }
 }
+class TFile {}
+const navigationNotices = [];
 class ButtonComponent {
-  constructor(parent) { this.element = parent.createEl("button"); }
+  constructor(parent) { this.element = parent.createEl("button"); this.buttonEl = this.element; }
   setButtonText(text) { this.element.text = text; return this; }
   setDisabled(disabled) { this.element.disabled = disabled; return this; }
   onClick(callback) { this.element.click = callback; return this; }
@@ -42,7 +44,9 @@ const viewBuild = await build({
 const viewModule = { exports: {} };
 runInNewContext(viewBuild.outputFiles[0].text, {
   module: viewModule, exports: viewModule.exports,
-  require: () => ({ ItemView, ButtonComponent }),
+  require: () => ({ ItemView, ButtonComponent, TFile,
+    Notice: class { constructor(message) { navigationNotices.push(message); } },
+  }),
 });
 const { ScanView } = viewModule.exports;
 
@@ -72,7 +76,7 @@ function setup(initial = { status: "idle" }, ready = true) {
 function status(view) { return view.contentEl.children.find((element) => element.tag === "p"); }
 
 function occurrence(offset = 0, sourcePath = "Folder/Source.md", target = "Missing") {
-  return { sourcePath, target, original: `[[${target}]]`, kind: "link", position: {
+  return { sourcePath, target, original: `[[${target}]]`, kind: "link", sourceRevision: { mtime: 1, size: 10 }, position: {
     start: { line: offset, col: 2, offset }, end: { line: offset, col: 13, offset: offset + 11 },
   } };
 }
@@ -136,6 +140,8 @@ test("result rows retain repeated targets, source paths and human-readable posit
   for (const row of rows) assert.equal(row.children[1].children[1].text, "Missing");
   assert.equal(rows[0].children[1].children[5].text, "Line 1, column 3");
   assert.equal(rows[1].children[1].children[5].text, "Line 5, column 3");
+  assert.equal(rows[0].children[2].text, "Open source");
+  assert.equal(rows[0].children[2].attributes["aria-label"], "Open Folder/Source.md, line 1, column 3");
 });
 
 test("renders HTML-like note paths and targets only as literal text", async () => {
@@ -150,6 +156,22 @@ test("renders HTML-like note paths and targets only as literal text", async () =
   assert.equal(row.children[1].children[3].text, `[[${unsafe}]]`);
   assert.equal(row.children[1].children[7].text, "Embed");
   assert.equal(row.children[0].children.length, 0);
+});
+
+test("Open source shows a rescan notice for changed and deleted notes", async () => {
+  for (const file of [null, Object.assign(new TFile(), {
+    extension: "md", stat: { mtime: 2, size: 10 },
+  })]) {
+    navigationNotices.length = 0;
+    const fixture = setup({ status: "results", occurrences: [occurrence()] });
+    fixture.view.app.vault = { getAbstractFileByPath: () => file };
+    await fixture.view.onOpen();
+    const row = fixture.view.contentEl.children.find((element) => element.tag === "ol").children[0];
+    await row.children[2].click();
+    assert.equal(navigationNotices.length, 1);
+    assert.match(navigationNotices[0], /Run the scan again/);
+    assert.equal(fixture.scans(), 0);
+  }
 });
 
 test("pages results in bounded lists and resets to the first page after a rescan", async () => {

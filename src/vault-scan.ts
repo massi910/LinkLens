@@ -1,4 +1,4 @@
-import type { LinkOccurrence, NoteLinks } from "./link-occurrence";
+import type { LinkOccurrence, NoteLinks, ScannedOccurrence } from "./link-occurrence";
 import type { LinkResolution } from "./link-resolution";
 
 export interface MarkdownNoteSnapshot {
@@ -15,7 +15,7 @@ export interface ScanSource {
 
 export type ScanState =
   | { readonly status: "idle" | "scanning" | "empty" }
-  | { readonly status: "results"; readonly occurrences: readonly LinkOccurrence[] }
+  | { readonly status: "results"; readonly occurrences: readonly ScannedOccurrence[] }
   | { readonly status: "error"; readonly message: string };
 
 type ScanPause = (milliseconds: number, signal: AbortSignal) => Promise<void>;
@@ -34,7 +34,7 @@ export class VaultScanner {
     return this.currentState;
   }
 
-  async run(): Promise<readonly LinkOccurrence[]> {
+  async run(): Promise<readonly ScannedOccurrence[]> {
     if (this.disposed) throw new Error("Scanner has been disposed.");
     if (this.controller !== null) throw new Error("A scan is already running.");
 
@@ -45,13 +45,16 @@ export class VaultScanner {
     try {
       const notes = this.source.getMarkdownNotes().map((note) => ({ ...note })).sort(compareNotes);
       const references = await this.collectMetadata(notes, controller.signal);
-      const missing: LinkOccurrence[] = [];
+      const revisions = new Map(notes.map((note) => [note.path, note]));
+      const missing: ScannedOccurrence[] = [];
       let processed = 0;
       for (const note of references) {
         for (const occurrence of note.occurrences) {
           checkCancelled(controller.signal);
           if (this.source.resolveLinkDestination(occurrence).status === "missing") {
-            missing.push(occurrence);
+            const revision = revisions.get(occurrence.sourcePath);
+            if (revision === undefined) throw new Error("The source note is unavailable.");
+            missing.push({ ...occurrence, sourceRevision: { mtime: revision.mtime, size: revision.size } });
           }
           if (++processed % 200 === 0) await this.pause(0, controller.signal);
         }

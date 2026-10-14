@@ -1,8 +1,9 @@
-import { ButtonComponent, ItemView } from "obsidian";
+import { ButtonComponent, ItemView, Notice } from "obsidian";
 import type { WorkspaceLeaf } from "obsidian";
 import type { VaultScanner } from "./vault-scan";
-import type { LinkOccurrence } from "./link-occurrence";
+import type { ScannedOccurrence } from "./link-occurrence";
 import { renderOccurrences } from "./result-list";
+import { openSourceOccurrence } from "./source-navigation";
 
 export const SCAN_VIEW_TYPE = "linklens-scan";
 
@@ -10,6 +11,7 @@ export class ScanView extends ItemView {
   private closed = true;
   private ready = false;
   private page = 0;
+  private openingSource = false;
 
   constructor(leaf: WorkspaceLeaf, private readonly scanner: Pick<VaultScanner, "state" | "run" | "dispose">) {
     super(leaf);
@@ -77,7 +79,21 @@ export class ScanView extends ItemView {
     }
   }
 
-  private renderResults(occurrences: readonly LinkOccurrence[]): void {
+  private async openSource(occurrence: ScannedOccurrence): Promise<void> {
+    if (this.closed || this.openingSource || this.scanner.state.status !== "results") return;
+    this.openingSource = true;
+    const results = this.scanner.state;
+    const isActive = () => !this.closed && this.scanner.state === results;
+    try {
+      await openSourceOccurrence(this.app, occurrence, isActive);
+    } catch (error: unknown) {
+      if (isActive()) new Notice(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.openingSource = false;
+    }
+  }
+
+  private renderResults(occurrences: readonly ScannedOccurrence[]): void {
     const pageSize = 100;
     const start = this.page * pageSize;
     const end = Math.min(start + pageSize, occurrences.length);
@@ -85,7 +101,7 @@ export class ScanView extends ItemView {
       text: `Showing ${start + 1}–${end} of ${occurrences.length}.`,
       cls: "linklens-range",
     });
-    renderOccurrences(this.contentEl, occurrences, start, end);
+    renderOccurrences(this.contentEl, occurrences, start, end, (occurrence) => this.openSource(occurrence));
     if (occurrences.length <= pageSize) return;
 
     const controls = this.contentEl.createEl("div", { cls: "linklens-pagination" });

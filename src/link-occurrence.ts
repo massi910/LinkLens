@@ -23,3 +23,7 @@ export type NoteLinks =
       readonly sourcePath: string;
       readonly occurrences: readonly LinkOccurrence[];
     };
+
+export interface ScannedOccurrence extends LinkOccurrence {
+  readonly sourceRevision: { readonly mtime: number; readonly size: number };
+}
