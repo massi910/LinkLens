@@ -9,12 +9,15 @@ class Element {
   children = [];
   text = "";
   attributes = {};
+  addClass(cls) { this.cls = cls; }
+  querySelector() { return null; }
   empty() { this.children = []; }
   createEl(tag, options = {}) {
     const element = new Element();
     element.tag = tag;
     element.text = options.text ?? "";
     element.attributes = { ...options.attr };
+    element.cls = options.cls;
     this.children.push(element);
     return element;
   }
@@ -68,6 +71,12 @@ function setup(initial = { status: "idle" }, ready = true) {
 }
 function status(view) { return view.contentEl.children.find((element) => element.tag === "p"); }
 
+function occurrence(offset = 0, sourcePath = "Folder/Source.md", target = "Missing") {
+  return { sourcePath, target, original: `[[${target}]]`, kind: "link", position: {
+    start: { line: offset, col: 2, offset }, end: { line: offset, col: 13, offset: offset + 11 },
+  } };
+}
+
 test("view waits for layout readiness and exposes idle and empty states", async () => {
   const fixture = setup({ status: "idle" }, false);
   await fixture.view.onOpen();
@@ -83,7 +92,7 @@ test("view waits for layout readiness and exposes idle and empty states", async 
 });
 
 test("rescan removes the old summary and blocks repeat requests while scanning", async () => {
-  const fixture = setup({ status: "results", occurrences: [{}, {}] });
+  const fixture = setup({ status: "results", occurrences: [occurrence(), occurrence(1)] });
   await fixture.view.onOpen();
   assert.match(status(fixture.view).text, /Found 2/);
   const running = fixture.view.scan();
@@ -91,7 +100,7 @@ test("rescan removes the old summary and blocks repeat requests while scanning",
   assert.equal(fixture.view.contentEl.children.find((element) => element.tag === "button").disabled, true);
   await fixture.view.scan();
   assert.equal(fixture.scans(), 1);
-  fixture.finish({ status: "results", occurrences: [{}] });
+  fixture.finish({ status: "results", occurrences: [occurrence()] });
   await running;
   assert.match(status(fixture.view).text, /Found 1/);
 });
@@ -116,6 +125,52 @@ test("closed views dispose their scanner and ignore pending scan completions", a
   fixture.finish({ status: "results", occurrences: [{}] });
   await running;
   assert.equal(fixture.view.contentEl.children.length, 0);
+});
+
+test("result rows retain repeated targets, source paths and human-readable positions", async () => {
+  const fixture = setup({ status: "results", occurrences: [occurrence(), occurrence(4)] });
+  await fixture.view.onOpen();
+  const rows = fixture.view.contentEl.children.find((element) => element.tag === "ol").children;
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].children[0].text, "Folder/Source.md");
+  for (const row of rows) assert.equal(row.children[1].children[1].text, "Missing");
+  assert.equal(rows[0].children[1].children[5].text, "Line 1, column 3");
+  assert.equal(rows[1].children[1].children[5].text, "Line 5, column 3");
+});
+
+test("renders HTML-like note paths and targets only as literal text", async () => {
+  const unsafe = "<img src=x onerror=alert(1)>";
+  const link = occurrence(0, `${unsafe}.md`, unsafe);
+  link.kind = "embed";
+  const fixture = setup({ status: "results", occurrences: [link] });
+  await fixture.view.onOpen();
+  const row = fixture.view.contentEl.children.find((element) => element.tag === "ol").children[0];
+  assert.equal(row.children[0].text, `${unsafe}.md`);
+  assert.equal(row.children[1].children[1].text, unsafe);
+  assert.equal(row.children[1].children[3].text, `[[${unsafe}]]`);
+  assert.equal(row.children[1].children[7].text, "Embed");
+  assert.equal(row.children[0].children.length, 0);
+});
+
+test("pages results in bounded lists and resets to the first page after a rescan", async () => {
+  const links = Array.from({ length: 103 }, (_, index) => occurrence(index));
+  const fixture = setup({ status: "results", occurrences: links });
+  await fixture.view.onOpen();
+  const list = () => fixture.view.contentEl.children.find((element) => element.tag === "ol");
+  const controls = () => fixture.view.contentEl.children.find((element) => element.cls === "linklens-pagination").children;
+  assert.equal(list().children.length, 100);
+  assert.equal(controls()[0].disabled, true);
+  controls()[1].click();
+  assert.equal(list().children.length, 3);
+  assert.equal(list().attributes.start, "101");
+  assert.equal(controls()[1].disabled, true);
+  assert.equal(list().children[0].children[1].children[5].text, "Line 101, column 3");
+  const running = fixture.view.scan();
+  assert.equal(fixture.view.contentEl.children.some((element) => element.tag === "ol"), false);
+  fixture.finish({ status: "results", occurrences: links });
+  await running;
+  assert.equal(list().attributes.start, "1");
+  assert.equal(list().children.length, 100);
 });
 
 test("command scans into one reusable view and unload closes it", async () => {

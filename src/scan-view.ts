@@ -1,12 +1,15 @@
 import { ButtonComponent, ItemView } from "obsidian";
 import type { WorkspaceLeaf } from "obsidian";
 import type { VaultScanner } from "./vault-scan";
+import type { LinkOccurrence } from "./link-occurrence";
+import { renderOccurrences } from "./result-list";
 
 export const SCAN_VIEW_TYPE = "linklens-scan";
 
 export class ScanView extends ItemView {
   private closed = true;
   private ready = false;
+  private page = 0;
 
   constructor(leaf: WorkspaceLeaf, private readonly scanner: Pick<VaultScanner, "state" | "run" | "dispose">) {
     super(leaf);
@@ -17,6 +20,7 @@ export class ScanView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.closed = false;
+    this.contentEl.addClass("linklens-scan-view");
     this.render();
     this.app.workspace.onLayoutReady(() => {
       if (this.closed) return;
@@ -33,6 +37,7 @@ export class ScanView extends ItemView {
 
   async scan(): Promise<void> {
     if (this.closed || !this.ready || this.scanner.state.status === "scanning") return;
+    this.page = 0;
     const work = this.scanner.run();
     this.render();
     try {
@@ -61,11 +66,38 @@ export class ScanView extends ItemView {
         break;
       case "scanning": status.setText("Scanning Markdown notes…"); break;
       case "empty": status.setText("No broken internal file links found."); break;
-      case "results": status.setText(`Found ${state.occurrences.length} broken internal file link occurrence(s).`); break;
+      case "results":
+        status.setText(`Found ${state.occurrences.length} broken internal file link occurrence(s).`);
+        this.renderResults(state.occurrences);
+        break;
       case "error":
         status.setAttribute("role", "alert");
         status.setText(`Scan failed: ${state.message}`);
         break;
     }
+  }
+
+  private renderResults(occurrences: readonly LinkOccurrence[]): void {
+    const pageSize = 100;
+    const start = this.page * pageSize;
+    const end = Math.min(start + pageSize, occurrences.length);
+    this.contentEl.createEl("p", {
+      text: `Showing ${start + 1}–${end} of ${occurrences.length}.`,
+      cls: "linklens-range",
+    });
+    renderOccurrences(this.contentEl, occurrences, start, end);
+    if (occurrences.length <= pageSize) return;
+
+    const controls = this.contentEl.createEl("div", { cls: "linklens-pagination" });
+    const previous = new ButtonComponent(controls).setButtonText("Previous page").setDisabled(this.page === 0);
+    const next = new ButtonComponent(controls).setButtonText("Next page").setDisabled(end === occurrences.length);
+    const changePage = (step: number) => {
+      this.page += step;
+      this.render();
+      // Restore keyboard focus after replacing the pagination controls.
+      this.contentEl.querySelector<HTMLButtonElement>(".linklens-pagination button:not(:disabled)")?.focus();
+    };
+    previous.onClick(() => changePage(-1));
+    next.onClick(() => changePage(1));
   }
 }

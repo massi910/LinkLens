@@ -1,0 +1,59 @@
+.linklens-scan-view {
+  overflow-wrap: anywhere;
+}
+
+.linklens-scan-view .linklens-results {
+  padding-inline-start: 1.75em;
+}
+
+.linklens-scan-view .linklens-result {
+  margin-block: 1em;
+  padding: 0.75em;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background-color: var(--background-secondary);
+}
+
+.linklens-scan-view .linklens-source {
+  margin: 0 0 0.5em;
+  font-size: var(--font-ui-medium);
+}
+
+.linklens-scan-view .linklens-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: 0.25em 0.75em;
+  margin: 0;
+}
+
+.linklens-scan-view .linklens-details dt,
+.linklens-scan-view .linklens-range {
+  color: var(--text-muted);
+}
+
+.linklens-scan-view .linklens-details dd {
+  margin: 0;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.linklens-scan-view .linklens-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+}
+
+.linklens-scan-view button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .linklens-scan-view .linklens-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .linklens-scan-view .linklens-details dd {
+    margin-block-end: 0.5em;
+  }
+}
