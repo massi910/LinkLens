@@ -80,7 +80,8 @@ export class ScanView extends ItemView {
   }
 
   private async openSource(occurrence: ScannedOccurrence): Promise<void> {
-    if (this.closed || this.openingSource || this.scanner.state.status !== "results") return;
+    if (this.closed || this.openingSource || this.scanner.state.status !== "results"
+      || !this.scanner.state.occurrences.includes(occurrence)) return;
     this.openingSource = true;
     const results = this.scanner.state;
     const isActive = () => !this.closed && this.scanner.state === results;

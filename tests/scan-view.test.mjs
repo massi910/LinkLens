@@ -131,6 +131,17 @@ test("closed views dispose their scanner and ignore pending scan completions", a
   assert.equal(fixture.view.contentEl.children.length, 0);
 });
 
+test("layout readiness arriving after closing does not rebuild a disposed view", async () => {
+  const fixture = setup({ status: "idle" }, false);
+  await fixture.view.onOpen();
+  await fixture.view.onClose();
+  fixture.ready();
+  await fixture.view.scan();
+  assert.equal(fixture.view.contentEl.children.length, 0);
+  assert.equal(fixture.scans(), 0);
+  assert.equal(fixture.scanner.disposed, true);
+});
+
 test("result rows retain repeated targets, source paths and human-readable positions", async () => {
   const fixture = setup({ status: "results", occurrences: [occurrence(), occurrence(4)] });
   await fixture.view.onOpen();

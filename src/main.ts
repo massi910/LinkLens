@@ -26,13 +26,22 @@ export default class LinkLensPlugin extends Plugin {
   private async scanVault(): Promise<void> {
     if (this.disposed) return;
     try {
-      this.opening ??= this.openScanView();
-      const view = await this.opening;
+      const view = await this.getScanView();
       if (!this.disposed) await view.scan();
     } catch (error: unknown) {
       if (!this.disposed) new Notice(`Unable to open LinkLens: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private async getScanView(): Promise<ScanView> {
+    const opening = this.opening ?? this.openScanView();
+    this.opening = opening;
+    try {
+      return await opening;
     } finally {
-      this.opening = null;
+      // Share only view activation, not the scan's lifetime. A closed scan tab
+      // must not be reused while its cancelled scan is still settling.
+      if (this.opening === opening) this.opening = null;
     }
   }
 

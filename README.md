@@ -13,7 +13,7 @@ Results are ordered by source path and position, with up to 100 occurrences per 
 
 Navigation checks the source revision, original text, and editor coordinates before selecting a result. Changed, renamed, or deleted sources require a fresh scan; the plugin does not guess a new location for an old result. An unchanged source editor is reused when available.
 
-The plugin never modifies notes or creates destinations. Edit notes in the normal editor and wait for Obsidian to index changes before rescanning. An unavailable cache or a changed Markdown source produces an error rather than a partial result. Closing the scan tab cancels its work.
+The plugin never modifies notes or creates destinations. Edit notes in the normal editor and wait for Obsidian to index changes before rescanning. An unavailable cache or a changed Markdown source produces an error rather than a partial result. Closing the scan tab or disabling the plugin cancels pending scan work. Rerunning the command after closing creates a fresh scan view; late operations cannot update the closed view or select an occurrence from superseded results.
 
 ## Development
 
@@ -26,7 +26,7 @@ npm test
 npm run build
 ```
 
-`npm run dev` watches TypeScript sources and rebuilds `main.js`. `npm test` builds the plugin and runs tooling, metadata, destination, orchestration, and command/view tests using Node's test runner. Tests use synthetic API mocks; they verify delegation, classification, and scan state, not real Obsidian parsing or destination resolution.
+`npm run dev` watches TypeScript sources and rebuilds `main.js`. `npm test` builds the plugin and runs tooling, metadata, destination, orchestration, command/view, and lifecycle workflow tests using Node's test runner. Tests use synthetic API mocks; they verify delegation, classification, and scan state, not real Obsidian parsing or destination resolution.
 
 The build uses the official Obsidian API types, TypeScript strict checking, and esbuild. Development dependencies are locked in `package-lock.json`; there are no runtime dependencies bundled with the plugin.
 
