@@ -30,6 +30,8 @@ npm run build
 
 The build uses the official Obsidian API types, TypeScript strict checking, and esbuild. Development dependencies are locked in `package-lock.json`; there are no runtime dependencies bundled with the plugin.
 
+For real desktop integration checks, run `npm run test:vault`. It builds the plugin and creates a new synthetic vault in the system temporary directory without overwriting an existing vault. Open the printed folder in Obsidian and follow the [desktop integration procedure](tests/integration/desktop.md), including the six-occurrence resolution matrix and safe navigation checks. Generating the fixture does not run Obsidian integration tests.
+
 ## Local installation
 
 Use a disposable development vault. After building, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/linklens/`, then enable LinkLens in **Settings → Community plugins**. Reload the plugin after rebuilding.
