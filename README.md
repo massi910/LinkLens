@@ -1,9 +1,19 @@
 # LinkLens
-An Obsidian plugin project with a minimal plugin entry point and tested modules for metadata reading, file destination checks, and vault scan orchestration. The reader preserves individual link and embed occurrences, their original targets and source positions, and distinguishes unavailable metadata from an empty note. No scanning command or results UI is available.
+Scan Markdown notes across an Obsidian vault for broken internal file links. The scan view shows each missing occurrence with its source note, target, original link syntax, type, and line/column position. It distinguishes idle, scanning, empty, results, and error states.
 
-The destination checker delegates file resolution to Obsidian with the source note's path. It checks file existence only, including attachments, ignores same-note fragments and non-vault URI schemes, and does not validate headings or blocks. The modules are not yet connected to the plugin entry point.
+The destination checker delegates file resolution to Obsidian with the source note's path. It checks file existence only, including attachments, ignores same-note fragments and non-vault URI schemes, and does not validate headings or blocks. Wikilinks, Markdown links, and embeds are read from Obsidian metadata; repeated occurrences remain separate.
 
 The scan coordinator collects Markdown sources through Obsidian's vault API, waits a bounded number of times for unavailable metadata, and publishes only completed results. It prevents overlapping scans, yields between batches, supports disposal, and rejects results if Markdown source paths, modification times, or sizes change during the scan. This is not an atomic snapshot of the vault.
+
+## Usage
+
+Requires Obsidian 1.7.2 or newer. Run **LinkLens: Scan vault for broken links** from the command palette. The command opens or reuses the LinkLens tab and starts a scan once the vault layout is ready. Use **Scan vault** to rerun it. Existing results are replaced by the scanning state until the new scan finishes.
+
+Results are ordered by source path and position, with up to 100 occurrences per page. Use **Previous page** and **Next page** for larger lists. Line and column numbers start at 1. **Open source** opens the note in the normal editor and selects the original link so you can edit it manually.
+
+Navigation checks the source revision, original text, and editor coordinates before selecting a result. Changed, renamed, or deleted sources require a fresh scan; the plugin does not guess a new location for an old result. An unchanged source editor is reused when available.
+
+The plugin never modifies notes or creates destinations. Edit notes in the normal editor and wait for Obsidian to index changes before rescanning. An unavailable cache or a changed Markdown source produces an error rather than a partial result. Closing the scan tab or disabling the plugin cancels pending scan work. Rerunning the command after closing creates a fresh scan view; late operations cannot update the closed view or select an occurrence from superseded results.
 
 ## Development
 
@@ -16,13 +26,13 @@ npm test
 npm run build
 ```
 
-`npm run dev` watches TypeScript sources and rebuilds `main.js`. `npm test` builds the plugin and runs tooling, metadata, destination, and scan orchestration tests using Node's test runner. Tests use synthetic API mocks; they verify delegation, classification, and scan state, not real Obsidian parsing or destination resolution.
+`npm run dev` watches TypeScript sources and rebuilds `main.js`. `npm test` builds the plugin and runs tooling, metadata, destination, orchestration, command/view, and lifecycle workflow tests using Node's test runner. Tests use synthetic API mocks; they verify delegation, classification, and scan state, not real Obsidian parsing or destination resolution.
 
 The build uses the official Obsidian API types, TypeScript strict checking, and esbuild. Development dependencies are locked in `package-lock.json`; there are no runtime dependencies bundled with the plugin.
 
 ## Local installation
 
-Use a disposable development vault. After building, copy `main.js` and `manifest.json` into `<vault>/.obsidian/plugins/linklens/`, then enable LinkLens in **Settings → Community plugins**. Reload the plugin after rebuilding.
+Use a disposable development vault. After building, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/linklens/`, then enable LinkLens in **Settings → Community plugins**. Reload the plugin after rebuilding.
 
 The manifest enables desktop and mobile loading. Actual Obsidian integration on either platform has not been verified.
 

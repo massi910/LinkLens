@@ -36,11 +36,11 @@ test("production bundle exports an Obsidian plugin without Node or browser globa
     require(id) {
       loadedModules.push(id);
       assert.equal(id, "obsidian");
-      return { Plugin };
+      return { Plugin, ItemView: class {} };
     },
   });
 
-  assert.deepEqual(loadedModules, ["obsidian"]);
+  assert.deepEqual([...new Set(loadedModules)], ["obsidian"]);
   assert.equal(typeof module.exports.default, "function");
   assert.ok(new module.exports.default() instanceof Plugin);
   assert.ok(!bundle.includes("sourceMappingURL="));
