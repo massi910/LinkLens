@@ -11,12 +11,14 @@ function setup() {
     children = [];
     text = "";
     empty() { this.children = []; }
+    remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); }
     addClass() {}
     querySelector() { return null; }
     setText(text) { this.text = text; }
     setAttribute() {}
     createEl(tag, options = {}) {
       const child = Object.assign(new Element(), { tag, text: options.text ?? "" });
+      child.parent = this;
       this.children.push(child);
       return child;
     }

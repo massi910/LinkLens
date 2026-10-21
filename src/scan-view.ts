@@ -12,6 +12,9 @@ export class ScanView extends ItemView {
   private ready = false;
   private page = 0;
   private openingSource = false;
+  private scanButton: ButtonComponent | null = null;
+  private statusEl: HTMLElement | null = null;
+  private resultElements: HTMLElement[] = [];
 
   constructor(leaf: WorkspaceLeaf, private readonly scanner: Pick<VaultScanner, "state" | "run" | "dispose">) {
     super(leaf);
@@ -35,10 +38,15 @@ export class ScanView extends ItemView {
     this.closed = true;
     this.scanner.dispose();
     this.contentEl.empty();
+    this.scanButton = null;
+    this.statusEl = null;
+    this.resultElements = [];
   }
 
   async scan(): Promise<void> {
     if (this.closed || !this.ready || this.scanner.state.status === "scanning") return;
+    const document = this.contentEl.ownerDocument;
+    const restoreFocus = this.scanButton !== null && document?.activeElement === this.scanButton.buttonEl;
     this.page = 0;
     const work = this.scanner.run();
     this.render();
@@ -46,22 +54,29 @@ export class ScanView extends ItemView {
       await work;
     } catch {
       // The scanner exposes the failure in its error state; closing cancels it.
+    } finally {
       this.render();
-      return;
+      // Do not steal focus if the user moved to another control or app.
+      if (restoreFocus && !this.closed && document.hasFocus()
+        && (document.activeElement === document.body || document.activeElement === this.scanButton?.buttonEl)) {
+        this.scanButton?.buttonEl.focus();
+      }
     }
-    this.render();
   }
 
   private render(): void {
     if (this.closed) return;
     const state = this.scanner.state;
-    this.contentEl.empty();
-    this.contentEl.createEl("h2", { text: "LinkLens" });
-    new ButtonComponent(this.contentEl)
-      .setButtonText("Scan vault")
-      .setDisabled(!this.ready || state.status === "scanning")
-      .onClick(() => this.scan());
-    const status = this.contentEl.createEl("p", { attr: { role: "status", "aria-live": "polite" } });
+    if (this.scanButton === null || this.statusEl === null) {
+      this.contentEl.createEl("h2", { text: "LinkLens" });
+      this.scanButton = new ButtonComponent(this.contentEl).setButtonText("Scan vault").onClick(() => this.scan());
+      this.statusEl = this.contentEl.createEl("p", { attr: { role: "status", "aria-live": "polite", "aria-atomic": "true" } });
+    }
+    this.scanButton.setDisabled(!this.ready || state.status === "scanning");
+    for (const element of this.resultElements) element.remove();
+    this.resultElements = [];
+    const status = this.statusEl;
+    status.setAttribute("role", state.status === "error" ? "alert" : "status");
     switch (state.status) {
       case "idle":
         status.setText(this.ready ? "Ready to scan Markdown notes." : "Waiting for the vault to load.");
@@ -98,14 +113,15 @@ export class ScanView extends ItemView {
     const pageSize = 100;
     const start = this.page * pageSize;
     const end = Math.min(start + pageSize, occurrences.length);
-    this.contentEl.createEl("p", {
+    this.resultElements.push(this.contentEl.createEl("p", {
       text: `Showing ${start + 1}–${end} of ${occurrences.length}.`,
       cls: "linklens-range",
-    });
-    renderOccurrences(this.contentEl, occurrences, start, end, (occurrence) => this.openSource(occurrence));
+    }));
+    this.resultElements.push(renderOccurrences(this.contentEl, occurrences, start, end, (occurrence) => this.openSource(occurrence)));
     if (occurrences.length <= pageSize) return;
 
     const controls = this.contentEl.createEl("div", { cls: "linklens-pagination" });
+    this.resultElements.push(controls);
     const previous = new ButtonComponent(controls).setButtonText("Previous page").setDisabled(this.page === 0);
     const next = new ButtonComponent(controls).setButtonText("Next page").setDisabled(end === occurrences.length);
     const changePage = (step: number) => {

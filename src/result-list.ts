@@ -7,7 +7,7 @@ export function renderOccurrences(
   start: number,
   end: number,
   openSource: (occurrence: ScannedOccurrence) => Promise<void>,
-): void {
+): HTMLOListElement {
   const list = container.createEl("ol", {
     cls: "linklens-results",
     attr: { "aria-label": "Broken link occurrences", start: String(start + 1) },
@@ -30,4 +30,5 @@ export function renderOccurrences(
     open.buttonEl.setAttribute("aria-label", `Open ${occurrence.sourcePath}, line ${occurrence.position.start.line + 1}, column ${occurrence.position.start.col + 1}`);
     open.onClick(() => openSource(occurrence));
   }
+  return list;
 }

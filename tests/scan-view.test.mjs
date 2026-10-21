@@ -12,12 +12,14 @@ class Element {
   addClass(cls) { this.cls = cls; }
   querySelector() { return null; }
   empty() { this.children = []; }
+  remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); }
   createEl(tag, options = {}) {
     const element = new Element();
     element.tag = tag;
     element.text = options.text ?? "";
     element.attributes = { ...options.attr };
     element.cls = options.cls;
+    element.parent = this;
     this.children.push(element);
     return element;
   }
@@ -118,6 +120,54 @@ test("scan errors are shown as text and allow a retry", async () => {
   assert.match(status(fixture.view).text, /Scan failed: Metadata unavailable/);
   assert.equal(status(fixture.view).attributes.role, "alert");
   assert.equal(fixture.view.contentEl.children.find((element) => element.tag === "button").disabled, false);
+});
+
+test("keeps the live status region and scan button stable and resets alert semantics on retry", async () => {
+  const fixture = setup();
+  await fixture.view.onOpen();
+  const originalStatus = status(fixture.view);
+  const button = fixture.view.contentEl.children.find((element) => element.tag === "button");
+  const running = fixture.view.scan();
+  assert.equal(status(fixture.view), originalStatus);
+  assert.equal(fixture.view.contentEl.children.find((element) => element.tag === "button"), button);
+  fixture.fail();
+  await running;
+  assert.equal(originalStatus.attributes.role, "alert");
+  const retry = fixture.view.scan();
+  assert.equal(originalStatus.attributes.role, "status");
+  assert.equal(originalStatus.attributes["aria-atomic"], "true");
+  fixture.finish({ status: "empty" });
+  await retry;
+  assert.equal(status(fixture.view), originalStatus);
+});
+
+test("restores scan-button focus after completion when the user has not moved elsewhere", async () => {
+  const fixture = setup();
+  await fixture.view.onOpen();
+  const button = fixture.view.contentEl.children.find((element) => element.tag === "button");
+  const document = { body: {}, activeElement: button, hasFocus: () => true };
+  fixture.view.contentEl.ownerDocument = document;
+  button.focus = () => { document.activeElement = button; };
+  const running = fixture.view.scan();
+  document.activeElement = document.body;
+  fixture.finish({ status: "empty" });
+  await running;
+  assert.equal(document.activeElement, button);
+});
+
+test("does not steal focus from another control or application after a scan", async () => {
+  for (const appFocused of [true, false]) {
+    const fixture = setup();
+    await fixture.view.onOpen();
+    const button = fixture.view.contentEl.children.find((element) => element.tag === "button");
+    const document = { body: {}, activeElement: button, hasFocus: () => appFocused };
+    fixture.view.contentEl.ownerDocument = document;
+    button.focus = () => { assert.fail("Focus must not be stolen"); };
+    const running = fixture.view.scan();
+    document.activeElement = appFocused ? {} : document.body;
+    fixture.finish({ status: "empty" });
+    await running;
+  }
 });
 
 test("closed views dispose their scanner and ignore pending scan completions", async () => {
