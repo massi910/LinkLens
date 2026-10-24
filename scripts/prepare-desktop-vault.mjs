@@ -3,6 +3,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 const root = new URL("../", import.meta.url);
+const large = process.argv.includes("--large");
+if (process.argv.slice(2).some((argument) => argument !== "--large")) {
+  throw new Error("Usage: node scripts/prepare-desktop-vault.mjs [--large]");
+}
 // Always create a new vault: never overwrite an existing vault or user notes.
 const vault = await mkdtemp(join(tmpdir(), "linklens-desktop-"));
 const notes = {
@@ -42,6 +46,17 @@ for (const [path, content] of Object.entries(notes)) {
   await mkdir(dirname(destination), { recursive: true });
   await writeFile(destination, content, { flag: "wx" });
 }
+if (large) {
+  for (let group = 0; group < 10; group++) {
+    const directory = join(vault, "Stress", `Group-${String(group).padStart(2, "0")}`);
+    await mkdir(directory, { recursive: true });
+    for (let index = 0; index < 100; index++) {
+      const content = [...Array(9).fill("[[Target]]"), "[[Stress missing]]"].join("\n") + "\n";
+      await writeFile(join(directory, `Note-${String(index).padStart(3, "0")}.md`), content, { flag: "wx" });
+    }
+  }
+  await writeFile(join(vault, "Stress", "Many links.md"), "[[Target]]\n".repeat(20000), { flag: "wx" });
+}
 await mkdir(join(vault, "Assets"));
 await writeFile(join(vault, "Assets", "My Image.png"), Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=", "base64",
@@ -55,4 +70,6 @@ const manifest = JSON.parse(await readFile(new URL("manifest.json", root), "utf8
 console.log(`Desktop test vault: ${vault}`);
 console.log(`Plugin version: ${manifest.version}; minimum Obsidian: ${manifest.minAppVersion}`);
 console.log("Open this folder as a vault in Obsidian and enable LinkLens.");
-console.log("Expected first scan: 6 missing occurrences. See tests/integration/desktop.md.");
+console.log(large
+  ? "Large fixture: 1,008 Markdown notes; 1,006 missing occurrences; 20,000 valid links in Stress/Many links.md. See tests/integration/robustness.md."
+  : "Expected first scan: 6 missing occurrences. See tests/integration/desktop.md.");
