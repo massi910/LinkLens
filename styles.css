@@ -1,5 +1,7 @@
 .linklens-scan-view {
   overflow-wrap: anywhere;
+  container-type: inline-size;
+  container-name: linklens-scan;
 }
 
 .linklens-scan-view .linklens-results {
@@ -37,6 +39,10 @@
   white-space: pre-wrap;
 }
 
+.linklens-scan-view .linklens-result > button {
+  margin-block-start: 0.75em;
+}
+
 .linklens-scan-view .linklens-pagination {
   display: flex;
   flex-wrap: wrap;
@@ -46,6 +52,23 @@
 .linklens-scan-view button:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .linklens-scan-view button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@container linklens-scan (max-width: 480px) {
+  .linklens-scan-view .linklens-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .linklens-scan-view .linklens-details dd {
+    margin-block-end: 0.5em;
+  }
 }
 
 @media (max-width: 480px) {
