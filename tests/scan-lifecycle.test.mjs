@@ -53,6 +53,7 @@ function setup() {
   let read = async () => text;
   let selections = 0;
   let activation = async () => {};
+  let reveal = async () => {};
   const file = Object.assign(new TFile(), { path: "Source.md", extension: "md", stat: { mtime: 1, size: text.length } });
   const leaves = [];
   const editor = {
@@ -95,19 +96,25 @@ function setup() {
         };
         return leaf;
       },
-      revealLeaf: async () => {},
-      detachLeavesOfType(type) { for (const leaf of [...leaves]) if (leaf.type === type) leaf.detach(); },
+      revealLeaf: () => reveal(),
+      detachLeavesOfType() { assert.fail("Plugin unload must preserve workspace leaves"); },
     },
   };
   plugin.app = app;
   plugin.onload();
   return {
     plugin, leaves, notices,
+    async unload() {
+      plugin.onunload();
+      // The host closes registered views without removing their workspace leaves.
+      for (const leaf of leaves) if (leaf.view instanceof ItemView) await leaf.view.onClose();
+    },
     scanLeaf: () => leaves.find((leaf) => leaf.type === "linklens-scan"),
     edit() { text = "[[Target]]"; cachedTarget = "Target"; file.stat.mtime++; file.stat.size = text.length; },
     setMetadataReady(value) { metadataReady = value; },
     setRead(callback) { read = callback; },
     setActivation(callback) { activation = callback; },
+    setReveal(callback) { reveal = callback; },
     selections: () => selections,
   };
 }
@@ -128,7 +135,7 @@ test("complete workflow opens an occurrence, accepts a manual edit and reruns to
   assert.match(summary(fixture.scanLeaf()), /No broken/);
   assert.equal(fixture.scanLeaf().view.contentEl.children.some((child) => child.tag === "ol"), false);
   assert.deepEqual(fixture.notices, []);
-  fixture.plugin.onunload();
+  await fixture.unload();
 });
 
 test("closing a pending scan allows an immediate command to create a fresh view", async () => {
@@ -146,7 +153,7 @@ test("closing a pending scan allows an immediate command to create a fresh view"
   assert.match(summary(fixture.scanLeaf()), /Found 1/);
   assert.equal(oldLeaf.view.contentEl.children.length, 0);
   assert.deepEqual(fixture.notices, []);
-  fixture.plugin.onunload();
+  await fixture.unload();
 });
 
 test("unloading during metadata waits cancels work without notices or UI updates", async () => {
@@ -155,23 +162,40 @@ test("unloading during metadata waits cancels work without notices or UI updates
   const running = fixture.plugin.command.callback();
   await settle();
   const leaf = fixture.scanLeaf();
-  fixture.plugin.onunload();
+  await fixture.unload();
   await running;
-  assert.equal(fixture.leaves.length, 0);
+  assert.equal(fixture.leaves.length, 1);
   assert.equal(leaf.view.contentEl.children.length, 0);
   assert.deepEqual(fixture.notices, []);
 });
 
-test("unloading while the view activates leaves no late tab or notice", async () => {
+test("unloading while the view activates preserves its leaf without late UI or notices", async () => {
   const fixture = setup();
   let finish;
   fixture.setActivation(() => new Promise((resolve) => { finish = resolve; }));
   const running = fixture.plugin.command.callback();
   await settle();
-  fixture.plugin.onunload();
+  await fixture.unload();
   finish();
   await running;
-  assert.equal(fixture.leaves.length, 0);
+  assert.equal(fixture.leaves.length, 1);
+  assert.equal(fixture.scanLeaf().view.contentEl.children.length, 0);
+  assert.deepEqual(fixture.notices, []);
+});
+
+test("unloading during reveal preserves the workspace leaf without starting a scan", async () => {
+  const fixture = setup();
+  let finish;
+  fixture.setReveal(() => new Promise((resolve) => { finish = resolve; }));
+  const running = fixture.plugin.command.callback();
+  await settle();
+  const leaf = fixture.scanLeaf();
+  await fixture.unload();
+  finish();
+  await running;
+  assert.equal(fixture.leaves.length, 1);
+  assert.equal(fixture.scanLeaf(), leaf);
+  assert.equal(leaf.view.contentEl.children.length, 0);
   assert.deepEqual(fixture.notices, []);
 });
 
@@ -187,7 +211,7 @@ test("a new scan invalidates pending navigation from its previous results", asyn
   assert.equal(fixture.selections(), 0);
   assert.equal(fixture.leaves.some((leaf) => leaf.type === "markdown"), false);
   assert.deepEqual(fixture.notices, []);
-  fixture.plugin.onunload();
+  await fixture.unload();
 });
 
 test("closing the view silences a navigation failure that arrives later", async () => {
@@ -202,7 +226,7 @@ test("closing the view silences a navigation failure that arrives later", async 
   await navigating;
   assert.equal(leaf.view.contentEl.children.length, 0);
   assert.deepEqual(fixture.notices, []);
-  fixture.plugin.onunload();
+  await fixture.unload();
 });
 
 test("a detached Open source button cannot open a superseded occurrence", async () => {
@@ -213,5 +237,5 @@ test("a detached Open source button cannot open a superseded occurrence", async 
   await oldButton.click();
   assert.equal(fixture.selections(), 0);
   assert.equal(fixture.leaves.some((leaf) => leaf.type === "markdown"), false);
-  fixture.plugin.onunload();
+  await fixture.unload();
 });

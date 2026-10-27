@@ -256,7 +256,7 @@ test("pages results in bounded lists and resets to the first page after a rescan
   assert.equal(list().children.length, 100);
 });
 
-test("command scans into one reusable view and unload closes it", async () => {
+test("command reuses its view and unload leaves workspace cleanup to Obsidian", async () => {
   class Plugin {
     registerView(type, factory) { this.factory = factory; this.type = type; }
     addCommand(command) { this.command = command; }
@@ -283,11 +283,11 @@ test("command scans into one reusable view and unload closes it", async () => {
           this.view = plugin.factory(this);
           leaves.push(this);
           await this.view.onOpen();
-        }, detach() { void this.view.onClose(); } };
+        }, detach() { assert.fail("Plugin unload must not detach its leaf"); } };
         return leaf;
       },
       revealLeaf: async () => {},
-      detachLeavesOfType() { for (const leaf of leaves) leaf.detach(); },
+      detachLeavesOfType() { assert.fail("Plugin unload must preserve workspace leaves"); },
     },
   };
   plugin.app = app;
@@ -298,7 +298,12 @@ test("command scans into one reusable view and unload closes it", async () => {
   assert.match(status(leaves[0].view).text, /No broken/);
   await plugin.command.callback();
   assert.equal(leaves.length, 1);
+  const leaf = leaves[0];
   plugin.onunload();
-  assert.equal(leaves[0].view.contentEl.children.length, 0);
+  assert.equal(leaves.length, 1);
+  assert.equal(leaves[0], leaf);
+  // Obsidian unregisters the view and calls onClose without detaching the leaf.
+  await leaf.view.onClose();
+  assert.equal(leaf.view.contentEl.children.length, 0);
   assert.deepEqual(notices, []);
 });

@@ -19,8 +19,7 @@ export default class LinkLensPlugin extends Plugin {
 
   onunload(): void {
     this.disposed = true;
-    // Closing the view cancels its work and releases its scan timers.
-    this.app.workspace.detachLeavesOfType(SCAN_VIEW_TYPE);
+    // Obsidian closes registered views while preserving their workspace location.
   }
 
   private async scanVault(): Promise<void> {
@@ -51,12 +50,10 @@ export default class LinkLensPlugin extends Plugin {
     const leaf = existing ?? workspace.getLeaf(true);
     if (existing === undefined) await leaf.setViewState({ type: SCAN_VIEW_TYPE, active: true });
     if (this.disposed) {
-      leaf.detach();
       throw new Error("LinkLens has been unloaded.");
     }
     await workspace.revealLeaf(leaf);
     if (this.disposed) {
-      leaf.detach();
       throw new Error("LinkLens has been unloaded.");
     }
     // revealLeaf also loads deferred views on newer Obsidian versions.

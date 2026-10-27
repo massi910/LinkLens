@@ -53,7 +53,7 @@ The fixture uses display aliases (`[[Target|Alias]]`); it does not assume that a
 
 1. Run the command repeatedly: one LinkLens scan tab, no duplicated rows.
 2. Close that tab and immediately run the command again: a working new view.
-3. Disable LinkLens: its view closes. Re-enable it and rerun: scanning and navigation work again.
+3. Move the LinkLens tab to another pane or sidebar. Disable and re-enable LinkLens: Obsidian must retain the tab in its chosen location. Rerun the command and verify scanning and navigation work again.
 4. Restart Obsidian with the view open. A restored view must start idle, not present old results as a new scan. Run a fresh scan.
 5. If a scan or navigation is still pending when closing/disabling, verify that no late result or notice appears. If the fixture is too small to observe this, mark the real-app cancellation check pending; deterministic automated tests cover the race but do not count as a manual observation.
 

@@ -20,7 +20,7 @@ The plugin never modifies notes or creates destinations. Edit notes in the norma
 - Markdown notes are scanned; other file formats are destinations only.
 - Only file existence is checked. Missing headings and blocks are not reported.
 - Scans depend on Obsidian's metadata cache and are not atomic vault snapshots. Wait for indexing after edits and rerun if the vault changes.
-- Desktop and iPhone checks have been reported successful, but the exact app/OS versions were not recorded. Android and the minimum app version have not been tested directly; full cross-platform validation is incomplete.
+- Manual checks have been reported successful on desktop, iPhone, and Android, including Obsidian 1.7.2. Exact device and OS versions were not recorded.
 
 ## Development
 
@@ -56,7 +56,7 @@ Preparing these files does not publish anything. A release tag must exactly matc
 
 Use a disposable development vault. After building, copy `main.js`, `manifest.json`, and `styles.css` into `<vault>/.obsidian/plugins/linklens/`, then enable LinkLens in **Settings → Community plugins**. Reload the plugin after rebuilding.
 
-The manifest enables desktop and mobile loading. Full platform and accessibility validation is not complete; mobile enablement alone is not proof of real-device compatibility.
+The plugin enables desktop and mobile loading. Manual checks on desktop, iPhone, Android, and the minimum supported Obsidian version (1.7.2) have been reported successful.
 
 ## License
 
